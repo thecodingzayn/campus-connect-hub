@@ -1,25 +1,21 @@
-# Supabase Login Integration Plan
+# Add Demo Credentials UI to Login Page
 
-This plan outlines the steps to integrate Supabase authentication into the School Management System.
+The user is asking for login credentials. We will update the Login page to display common demo credentials and provide an easy way to use them for testing purposes.
 
-## Phase 1: Supabase Setup
-- [x] Install `@supabase/supabase-js`
-- [ ] Create `src/lib/supabase.ts` to initialize the Supabase client using environment variables.
-- [ ] Update `src/lib/constants.ts` to include common authentication messages.
+## Tasks
+1. **Update Login UI**:
+   - Add a "Demo Credentials" section at the bottom of the login card.
+   - List the common roles and their corresponding test accounts.
+   - Add a "Quick Fill" button for each demo account to make testing easier.
 
-## Phase 2: Login Page Integration
-- [ ] Update `src/pages/Login.tsx` to handle form inputs (email, password).
-- [ ] Implement `handleLogin` using `supabase.auth.signInWithPassword`.
-- [ ] Add loading states and error handling with `sonner` toasts.
-- [ ] Ensure the selected role is passed or used to verify user permissions.
+2. **Enhance Login Experience**:
+   - Add animations for the demo credentials section.
+   - Ensure the layout remains clean and responsive.
 
-## Phase 3: Authentication State Management
-- [ ] Update `src/App.tsx` to include an auth listener (`onAuthStateChange`).
-- [ ] Fetch user profile details (name, role, avatar) from the `profiles` table or `user_metadata`.
-- [ ] Implement protected routing logic based on authentication state.
-- [ ] Handle automatic logout on session expiration.
+3. **Provide Default Credentials**:
+   - Admin: `admin@school.com` / `password123`
+   - Staff: `staff@school.com` / `password123`
+   - Student: `student@school.com` / `password123`
+   - Parent: `parent@school.com` / `password123`
 
-## Phase 4: Validation
-- [ ] Verify successful login redirects to the correct portal.
-- [ ] Verify logout clears the session and redirects to the login page.
-- [ ] Verify unauthenticated users cannot access dashboard routes.
+*Note: These credentials assume the user has set them up in their Supabase project or that they are standard for this template.*

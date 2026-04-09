@@ -15,3 +15,10 @@ export const AUTH_MESSAGES = {
   REQUIRED_FIELDS: 'Please enter both email and password.',
   SELECT_PORTAL: 'Please select a portal first.',
 };
+
+export const DEMO_CREDENTIALS = [
+  { role: 'admin', email: 'admin@school.com', password: 'password123' },
+  { role: 'staff', email: 'staff@school.com', password: 'password123' },
+  { role: 'student', email: 'student@school.com', password: 'password123' },
+  { role: 'parent', email: 'parent@school.com', password: 'password123' },
+];
