@@ -10,10 +10,72 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Helper function to handle email/password sign in
-// This aligns with the expected function name in some project contexts
 export const signInWithEmail = async (email: string, password: string) => {
   return await supabase.auth.signInWithPassword({
     email,
     password,
   });
+};
+
+// --- CRUD OPERATIONS ---
+
+// Announcements
+export const createAnnouncement = async (announcement: any) => {
+  return await supabase.from('announcements').insert(announcement).select();
+};
+
+export const updateAnnouncement = async (id: string, updates: any) => {
+  return await supabase.from('announcements').update(updates).eq('id', id).select();
+};
+
+export const deleteAnnouncement = async (id: string) => {
+  return await supabase.from('announcements').delete().eq('id', id);
+};
+
+// Grades
+export const createGrade = async (grade: any) => {
+  return await supabase.from('grades').insert(grade).select();
+};
+
+export const updateGrade = async (id: string, updates: any) => {
+  return await supabase.from('grades').update(updates).eq('id', id).select();
+};
+
+export const deleteGrade = async (id: string) => {
+  return await supabase.from('grades').delete().eq('id', id);
+};
+
+// Profiles (Students, Staff, Parents)
+export const createProfile = async (profile: any) => {
+  return await supabase.from('profiles').insert(profile).select();
+};
+
+export const updateProfile = async (id: string, updates: any) => {
+  return await supabase.from('profiles').update(updates).eq('id', id).select();
+};
+
+export const deleteProfile = async (id: string) => {
+  return await supabase.from('profiles').delete().eq('id', id);
+};
+
+// Courses
+export const createCourse = async (course: any) => {
+  return await supabase.from('courses').insert(course).select();
+};
+
+export const updateCourse = async (id: string, updates: any) => {
+  return await supabase.from('courses').update(updates).eq('id', id).select();
+};
+
+export const deleteCourse = async (id: string) => {
+  return await supabase.from('courses').delete().eq('id', id);
+};
+
+// Attendance
+export const createAttendance = async (record: any) => {
+  return await supabase.from('attendance').insert(record).select();
+};
+
+export const updateAttendance = async (id: string, updates: any) => {
+  return await supabase.from('attendance').update(updates).eq('id', id).select();
 };

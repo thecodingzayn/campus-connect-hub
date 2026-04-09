@@ -7,7 +7,9 @@ import {
   Bell, 
   ArrowUpRight,
   ChevronRight,
-  Zap
+  Zap,
+  Star,
+  Trophy
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,42 +20,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 const StudentDashboard = () => {
-  const [grades, setGrades] = useState<any[]>([]);
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [grades, setGrades] = useState([
+    { subject: 'Mathematics', score: 'A-', trend: 'up' },
+    { subject: 'Physics', score: 'B+', trend: 'down' },
+    { subject: 'Literature', score: 'A', trend: 'stable' },
+  ]);
+
+  const [announcements, setAnnouncements] = useState([
+    { title: 'Final Exams Schedule Published', date: '2 hours ago', type: 'Exams' },
+    { title: 'School Football Match: Tigers vs Lions', date: '3 hours ago', type: 'Events' },
+  ]);
+
+  const [isLiveSession, setIsLiveSession] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      // Get current user id
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Fetch grades
-      const { data: gradesData } = await supabase
-        .from('grades')
-        .select('*')
-        .eq('student_id', user.id);
-      
-      if (gradesData) setGrades(gradesData);
-
-      // Fetch announcements
-      const { data: annData } = await supabase
-        .from('announcements')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (annData) setAnnouncements(annData.map(a => ({
-        title: a.title,
-        date: new Date(a.created_at).toLocaleDateString(),
-        type: a.type
-      })));
-    };
-
-    fetchData();
-
     // Real-time grades
     const gradesChannel = supabase
-      .channel('student-grades')
+      .channel('student-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'grades' },
@@ -61,21 +44,18 @@ const StudentDashboard = () => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const newGrade = payload.new;
             setGrades(prev => {
-              const exists = prev.find(g => g.id === newGrade.id || g.subject === newGrade.subject);
+              const exists = prev.find(g => g.subject === newGrade.subject);
               if (exists) {
-                return prev.map(g => (g.id === newGrade.id || g.subject === newGrade.subject) ? newGrade : g);
+                return prev.map(g => g.subject === newGrade.subject ? { ...g, score: newGrade.score, trend: newGrade.trend } : g);
               }
-              return [newGrade, ...prev];
+              return [{ subject: newGrade.subject, score: newGrade.score, trend: newGrade.trend }, ...prev];
             });
-            toast.success(`New grade posted for ${newGrade.subject}!`);
+            toast.success(`New grade posted for ${newGrade.subject}!`, {
+              icon: <Trophy className="w-4 h-4 text-yellow-500" />
+            });
           }
         }
       )
-      .subscribe();
-
-    // Real-time announcements
-    const annChannel = supabase
-      .channel('student-announcements')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'announcements' },
@@ -83,16 +63,15 @@ const StudentDashboard = () => {
           const newAnn = payload.new;
           setAnnouncements(prev => [
             { title: newAnn.title, date: 'Just now', type: newAnn.type || 'News' },
-            ...prev
+            ...prev.slice(0, 4)
           ]);
-          toast.info(`New Announcement: ${newAnn.title}`);
+          toast.info(`Announcement: ${newAnn.title}`);
         }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(gradesChannel);
-      supabase.removeChannel(annChannel);
     };
   }, []);
 
@@ -101,126 +80,161 @@ const StudentDashboard = () => {
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Student Portal</h1>
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1">
-            <Zap size={12} className="fill-green-700" /> Live Updates
-          </Badge>
+          <div className="flex items-center gap-1 bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+            <div className="w-1.5 h-1.5 bg-green-600 rounded-full animate-pulse"></div>
+            Active Sync
+          </div>
         </div>
-        <p className="text-slate-500">Welcome back! You have the latest updates here.</p>
+        <p className="text-slate-500 font-medium">Welcome back, Marcus! Here's your school life today.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="md:col-span-2 border-none shadow-sm bg-blue-600 text-white overflow-hidden relative">
-          <CardContent className="p-8 flex flex-col justify-between h-full min-h-[240px]">
+          <CardContent className="p-8 flex flex-col justify-between h-full min-h-[260px]">
             <div className="relative z-10">
-              <Badge className="bg-blue-500/50 text-white border-none mb-4">Ongoing Class</Badge>
-              <h2 className="text-3xl font-bold mb-2">Introduction to Quantum Physics</h2>
-              <p className="text-blue-100 flex items-center gap-2">
-                <Clock size={16} /> 10:15 AM - 11:30 AM • Room 402
+              <div className="flex items-center gap-2 mb-4">
+                <Badge className="bg-blue-500/50 text-white border-none">Ongoing Session</Badge>
+                {isLiveSession && <span className="flex items-center gap-1.5 text-blue-200 text-xs font-bold">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span> LIVE
+                </span>}
+              </div>
+              <motion.h2 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="text-4xl font-black mb-2 tracking-tight"
+              >
+                Quantum Physics 101
+              </motion.h2>
+              <p className="text-blue-100 flex items-center gap-2 font-medium">
+                <Clock size={18} /> 10:15 AM - 11:30 AM \\u2022 Dr. Sarah Hudson \\u2022 Lab 4
               </p>
             </div>
-            <div className="relative z-10 mt-8 flex gap-4">
-              <Button className="bg-white text-blue-600 hover:bg-blue-50">Join Online</Button>
-              <Button variant="ghost" className="text-white hover:bg-blue-500">View Materials</Button>
+            <div className="relative z-10 mt-10 flex gap-4">
+              <Button className="bg-white text-blue-600 hover:bg-blue-50 px-8 font-bold">Join Online Class</Button>
+              <Button variant="ghost" className="text-white hover:bg-blue-500/50">View Coursework</Button>
             </div>
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+            {/* Abstract Background Decoration */}
+            <div className="absolute -bottom-12 -right-12 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+            <div className="absolute top-1/2 right-1/4 w-1 h-24 bg-gradient-to-b from-white/0 via-white/20 to-white/0 rotate-45"></div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold">Upcoming Assignments</CardTitle>
+        <Card className="border-none shadow-sm overflow-hidden">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+            <CardTitle className="text-md font-bold">Deadlines</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start gap-4 pb-4 border-b border-slate-100">
-              <div className="w-10 h-10 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                <BookOpen size={20} />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-bold text-slate-900 text-sm">Calculus Problem Set</h4>
-                <p className="text-xs text-slate-500">Due Tomorrow, 11:59 PM</p>
-              </div>
+          <CardContent className="p-0">
+            <div className="divide-y divide-slate-50">
+              {[ 
+                { title: 'Calculus Quiz', due: 'Tomorrow, 11:59 PM', color: 'orange', icon: BookOpen },
+                { title: 'History Essay', due: 'Oct 28th', color: 'purple', icon: GraduationCap },
+                { title: 'Lab Report #4', due: 'Oct 30th', color: 'blue', icon: Star }
+              ].map((item, idx) => (
+                <motion.div 
+                  key={idx} 
+                  whileHover={{ backgroundColor: '#f8fafc' }}
+                  className="flex items-start gap-4 p-4 cursor-pointer group transition-colors"
+                >
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
+                    item.color === 'orange' ? "bg-orange-100 text-orange-600" : 
+                    item.color === 'purple' ? "bg-purple-100 text-purple-600" : "bg-blue-100 text-blue-600"
+                  )}>
+                    <item.icon size={20} />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">{item.title}</h4>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Due {item.due}</p>
+                  </div>
+                </motion.div>
+              ))}
             </div>
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                <GraduationCap size={20} />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-bold text-slate-900 text-sm">Literature Essay</h4>
-                <p className="text-xs text-slate-500">Due in 3 days</p>
-              </div>
+            <div className="p-4">
+              <Button variant="ghost" className="w-full text-slate-500 hover:text-slate-900 text-xs font-bold">
+                View All Calendar Events <ChevronRight size={14} className="ml-1" />
+              </Button>
             </div>
-            <Button variant="outline" className="w-full">View Calendar</Button>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card className="border-none shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-bold">Academic Performance</CardTitle>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <Card className="border-none shadow-sm lg:col-span-1">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-lg font-bold">Performance</CardTitle>
             <ArrowUpRight size={18} className="text-slate-400" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
+            <div className="space-y-5">
               <AnimatePresence mode="popLayout">
-                {grades.length > 0 ? grades.map((grade) => (
+                {grades.map((grade) => (
                   <motion.div 
-                    key={grade.id || grade.subject}
+                    key={grade.subject}
                     layout
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between p-3 rounded-xl border border-slate-50 hover:border-blue-100 hover:shadow-sm transition-all"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                      <span className="font-medium text-slate-700">{grade.subject}</span>
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] animate-pulse"></div>
+                      <span className="font-bold text-slate-700">{grade.subject}</span>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-bold text-slate-900">{grade.score}</span>
-                      <Badge variant="outline" className={cn(
-                        "text-[10px]",
-                        grade.trend === 'up' ? "text-green-600" : grade.trend === 'down' ? "text-red-600" : "text-slate-500"
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg font-black text-slate-900">{grade.score}</span>
+                      <Badge className={cn(
+                        "text-[10px] font-black",
+                        grade.trend === 'up' ? "bg-green-50 text-green-700" : grade.trend === 'down' ? "bg-red-50 text-red-700" : "bg-slate-50 text-slate-500"
                       )}>
-                        {grade.trend?.toUpperCase()}
+                        {grade.trend.toUpperCase()}
                       </Badge>
                     </div>
                   </motion.div>
-                )) : (
-                  <p className="text-slate-500 text-sm text-center py-4">No grades posted yet.</p>
-                )}
+                ))}
               </AnimatePresence>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-bold">Announcements</CardTitle>
+        <Card className="border-none shadow-sm lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-4">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg font-bold">School Activity Feed</CardTitle>
+              <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none px-2 h-5 text-[10px] font-bold tracking-wider">LIVE</Badge>
+            </div>
             <Bell size={18} className="text-slate-400" />
           </CardHeader>
-          <CardContent className="space-y-4">
-            <AnimatePresence mode="popLayout">
-              {announcements.length > 0 ? announcements.map((ann, idx) => (
-                <motion.div 
-                  key={idx} 
-                  layout
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 p-2 -mx-2 rounded-lg transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="secondary" className="text-[10px] h-5">{ann.type}</Badge>
-                      <span className="text-xs text-slate-400">{ann.date}</span>
+          <CardContent className="p-0">
+            <div className="divide-y divide-slate-50">
+              <AnimatePresence mode="popLayout">
+                {announcements.map((ann, idx) => (
+                  <motion.div 
+                    key={idx} 
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center justify-between group cursor-pointer hover:bg-slate-50/80 p-5 transition-all"
+                  >
+                    <div className="flex gap-4">
+                      <div className={cn(
+                        "w-1 h-12 rounded-full",
+                        ann.type === 'Exams' ? "bg-red-500" : ann.type === 'Events' ? "bg-orange-500" : "bg-blue-500"
+                      )}></div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Badge variant="outline" className="text-[10px] font-bold h-5 px-2 tracking-wide border-slate-200">{ann.type.toUpperCase()}</Badge>
+                          <span className="text-[10px] font-bold text-slate-400">{ann.date.toUpperCase()}</span>
+                        </div>
+                        <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{ann.title}</h4>
+                      </div>
                     </div>
-                    <h4 className="font-bold text-slate-900 text-sm">{ann.title}</h4>
-                  </div>
-                  <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-900 transition-colors" />
-                </motion.div>
-              )) : (
-                <p className="text-slate-500 text-sm text-center py-4">No announcements yet.</p>
-              )}
-            </AnimatePresence>
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                      <ChevronRight size={16} className="text-slate-600" />
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
           </CardContent>
         </Card>
       </div>

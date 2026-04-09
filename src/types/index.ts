@@ -48,4 +48,28 @@ export interface TimetableEntry {
   time: string;
   subject: string;
   room: string;
+  status?: 'ongoing' | 'upcoming' | 'completed';
+}
+
+export interface Assignment {
+  id: string;
+  title: string;
+  subject: string;
+  dueDate: string;
+  status: 'pending' | 'submitted' | 'graded';
+}
+
+export interface SchoolStats {
+  totalStudents: number;
+  totalStaff: number;
+  totalClasses: number;
+  avgAttendance: string;
+}
+
+export interface PaymentRecord {
+  id: string;
+  amount: number;
+  date: string;
+  status: 'paid' | 'pending';
+  description: string;
 }

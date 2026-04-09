@@ -1,23 +1,27 @@
 1. **Update `src/types/index.ts`**:
-   - Add `Notification` interface to support real-time alerts across the app.
-   - Ensure other types like `Announcement`, `Grade`, `AttendanceRecord` are robust for real-time usage.
+   - Add missing interfaces for real-time data: `SchoolStats`, `ScheduleEntry`, `AssignmentSubmission`, `FeeStatus`.
 
-2. **Update `src/App.tsx`**:
-   - Implement a global Supabase real-time subscription for a `notifications` table.
-   - When a new notification is inserted, trigger a `toast` using `sonner` to alert the user immediately.
-   - Ensure the subscription is cleaned up on unmount or logout.
+2. **Enhance `src/App.tsx`**:
+   - Add a second global subscription for `announcements` to show notifications to all logged-in users.
+   - Improve the `user` state initialization to ensure real-time connections are stable.
 
-3. **Update Dashboards with Real-time Logic**:
-   - **`AdminDashboard.tsx`**: Subscribe to `profiles` and `announcements` tables. Update the "Recent Registrations" list and stats in real-time when new users are added or modified.
-   - **`StaffDashboard.tsx`**: Subscribe to `attendance` and `announcements`. Show live updates when students check-in or when school-wide news is posted.
-   - **`StudentDashboard.tsx`**: Subscribe to `grades` and `announcements`. Provide immediate feedback when a teacher posts a new grade or an update to the school calendar.
-   - **`ParentDashboard.tsx`**: Subscribe to `grades`, `attendance`, and `announcements` specifically for their child's data.
+3. **Update `src/pages/admin/AdminDashboard.tsx`**:
+   - Implement real-time stat counters that increment/decrement based on `profiles` and `attendance` table changes.
+   - Refine the `recentUsers` table with smoother `framer-motion` transitions.
 
-4. **Enhance UI with Animations**:
-   - Wrap dynamic lists in `AnimatePresence` from `framer-motion`.
-   - Use `motion.div` for list items to animate them in when real-time updates occur.
+4. **Update `src/pages/staff/StaffDashboard.tsx`**:
+   - Add real-time subscription for `schedules` to reflect changes in the daily routine.
+   - Implement live submission tracking for the "Pending Grading" section.
+   - Ensure the `students` list updates instantly when attendance is marked (local optimistic update + real-time confirmation).
 
-5. **Verification**:
-   - Ensure the application still functions correctly with demo credentials.
-   - Verify that real-time listeners are established only when a user is authenticated.
-   - Confirm that the UI reflects data changes smoothly without full page reloads.
+5. **Update `src/pages/student/StudentDashboard.tsx`**:
+   - Add a live "Current Class" ticker that updates based on time and a `schedules` table.
+   - Real-time updates for "Upcoming Assignments" based on a new `assignments` table.
+   - Use `AnimatePresence` for all list updates.
+
+6. **Update `src/pages/parent/ParentDashboard.tsx`**:
+   - Add real-time `payments` subscription to update the "Outstanding Balance" live.
+   - Link `children` status directly to the `attendance` table with specific filtering for their child IDs.
+
+7. **Global Live Feed Component**:
+   - Create a small floating or sidebar "Live School Feed" in `DashboardLayout` or `Header` to show recent school-wide events.
