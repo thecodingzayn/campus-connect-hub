@@ -1,19 +1,23 @@
-1. **Update `src/lib/constants.ts`**:
-   - Add `USER_ROLES` constant to provide a single source of truth for user roles.
+1. **Update `src/types/index.ts`**:
+   - Add `Notification` interface to support real-time alerts across the app.
+   - Ensure other types like `Announcement`, `Grade`, `AttendanceRecord` are robust for real-time usage.
 
 2. **Update `src/App.tsx`**:
-   - Integrate `react-router-dom` for routing.
-   - Define specific routes: `/admin`, `/staff`, `/student`, `/parent`, and `/login`.
-   - Implement `ProtectedRoute` logic to ensure only users with the correct role can access their respective dashboard.
-   - Add logic to automatically redirect users to their role-specific route upon login or if they access the root path while authenticated.
-   - Ensure `DashboardLayout` correctly wraps the dashboard content for each role.
+   - Implement a global Supabase real-time subscription for a `notifications` table.
+   - When a new notification is inserted, trigger a `toast` using `sonner` to alert the user immediately.
+   - Ensure the subscription is cleaned up on unmount or logout.
 
-3. **Update `src/pages/Login.tsx`**:
-   - Ensure the `onLogin` callback is correctly triggered. (The current implementation in `App.tsx` will handle the navigation after state updates).
-   - Ensure the `DEMO_CREDENTIALS` are used correctly to simulate a login and trigger the redirection.
+3. **Update Dashboards with Real-time Logic**:
+   - **`AdminDashboard.tsx`**: Subscribe to `profiles` and `announcements` tables. Update the "Recent Registrations" list and stats in real-time when new users are added or modified.
+   - **`StaffDashboard.tsx`**: Subscribe to `attendance` and `announcements`. Show live updates when students check-in or when school-wide news is posted.
+   - **`StudentDashboard.tsx`**: Subscribe to `grades` and `announcements`. Provide immediate feedback when a teacher posts a new grade or an update to the school calendar.
+   - **`ParentDashboard.tsx`**: Subscribe to `grades`, `attendance`, and `announcements` specifically for their child's data.
 
-4. **Verification**:
-   - Test login as Admin, Staff, Student, and Parent.
-   - Verify that successful login redirects to the correct URL (e.g., `/admin`).
-   - Verify that manual navigation to a different role's dashboard (e.g., a student trying to go to `/admin`) redirects back to their own dashboard or login.
-   - Verify that logout takes the user back to `/login`.
+4. **Enhance UI with Animations**:
+   - Wrap dynamic lists in `AnimatePresence` from `framer-motion`.
+   - Use `motion.div` for list items to animate them in when real-time updates occur.
+
+5. **Verification**:
+   - Ensure the application still functions correctly with demo credentials.
+   - Verify that real-time listeners are established only when a user is authenticated.
+   - Confirm that the UI reflects data changes smoothly without full page reloads.

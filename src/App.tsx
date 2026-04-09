@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
-import { User, UserRole } from '@/types';
+import { User, UserRole, AppNotification } from '@/types';
 import { IMAGES, AUTH_MESSAGES, USER_ROLES } from '@/lib/constants';
 import Login from '@/pages/Login';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -39,16 +39,7 @@ function App() {
       if (session) {
         await fetchUserProfile(session.user.id, session.user.email || '');
       } else {
-        // Only clear if not a demo user (demo users don't have sessions)
-        // We can check if there's a real session or not
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (!currentSession) {
-          setUser(prev => {
-            // If prev was a demo user (no email ending in .com maybe? No, demo has email too)
-            // Let's just trust sign out
-            return null;
-          });
-        }
+        setUser(null);
       }
       setLoading(false);
     });
@@ -57,6 +48,34 @@ function App() {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Real-time Global Notifications
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('global-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newNotif = payload.new as AppNotification;
+          toast[newNotif.type || 'info'](newNotif.title, {
+            description: newNotif.message,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const fetchUserProfile = async (userId: string, email: string) => {
     try {
@@ -98,8 +117,6 @@ function App() {
 
   const handleLogin = (role: UserRole) => {
     // Immediate state update for demo users
-    // If it was a real login, onAuthStateChange will eventually call fetchUserProfile and setUser
-    // But for demo users, we need to simulate the user object
     if (!user) {
       setUser({
         id: `demo-${role}`,
@@ -178,13 +195,11 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Auth Route */}
         <Route 
           path="/login" 
           element={!user ? <Login onLogin={handleLogin} /> : <Navigate to={`/${user.role}`} replace />} 
         />
 
-        {/* Protected Dashboard Routes */}
         <Route 
           path="/admin" 
           element={
@@ -229,19 +244,17 @@ function App() {
           } 
         />
 
-        {/* Root Redirection */}
         <Route 
           path="/" 
           element={<Navigate to={user ? `/${user.role}` : "/login"} replace />} 
         />
 
-        {/* 404/Fallback */}
         <Route 
           path="*" 
           element={<Navigate to={user ? `/${user.role}` : "/login"} replace />} 
         />
       </Routes>
-      <Toaster position="top-right" />
+      <Toaster position="top-right" richColors />
     </BrowserRouter>
   );
 }

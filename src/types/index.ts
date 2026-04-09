@@ -14,19 +14,33 @@ export interface Announcement {
   content: string;
   date: string;
   author: string;
+  type: 'Exams' | 'Events' | 'News' | 'Academic';
 }
 
 export interface Grade {
+  id: string;
   subject: string;
-  score: number;
-  grade: string;
+  score: string;
+  trend: 'up' | 'down' | 'stable';
   teacher: string;
+  studentId?: string;
 }
 
 export interface AttendanceRecord {
+  id: string;
+  studentId: string;
   date: string;
   status: 'present' | 'absent' | 'late';
   subject: string;
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  timestamp: string;
+  user_id?: string;
 }
 
 export interface TimetableEntry {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   GraduationCap, 
   Calendar, 
@@ -6,30 +6,106 @@ import {
   BookOpen, 
   Bell, 
   ArrowUpRight,
-  ChevronRight
+  ChevronRight,
+  Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 const StudentDashboard = () => {
-  const grades = [
-    { subject: 'Mathematics', score: 'A-', trend: 'up' },
-    { subject: 'Physics', score: 'B+', trend: 'down' },
-    { subject: 'Literature', score: 'A', trend: 'stable' },
-  ];
+  const [grades, setGrades] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
 
-  const announcements = [
-    { title: 'Final Exams Schedule', date: '2 days ago', type: 'Exams' },
-    { title: 'School Football Match', date: '3 days ago', type: 'Events' },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      // Get current user id
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch grades
+      const { data: gradesData } = await supabase
+        .from('grades')
+        .select('*')
+        .eq('student_id', user.id);
+      
+      if (gradesData) setGrades(gradesData);
+
+      // Fetch announcements
+      const { data: annData } = await supabase
+        .from('announcements')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      if (annData) setAnnouncements(annData.map(a => ({
+        title: a.title,
+        date: new Date(a.created_at).toLocaleDateString(),
+        type: a.type
+      })));
+    };
+
+    fetchData();
+
+    // Real-time grades
+    const gradesChannel = supabase
+      .channel('student-grades')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'grades' },
+        (payload) => {
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            const newGrade = payload.new;
+            setGrades(prev => {
+              const exists = prev.find(g => g.id === newGrade.id || g.subject === newGrade.subject);
+              if (exists) {
+                return prev.map(g => (g.id === newGrade.id || g.subject === newGrade.subject) ? newGrade : g);
+              }
+              return [newGrade, ...prev];
+            });
+            toast.success(`New grade posted for ${newGrade.subject}!`);
+          }
+        }
+      )
+      .subscribe();
+
+    // Real-time announcements
+    const annChannel = supabase
+      .channel('student-announcements')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'announcements' },
+        (payload) => {
+          const newAnn = payload.new;
+          setAnnouncements(prev => [
+            { title: newAnn.title, date: 'Just now', type: newAnn.type || 'News' },
+            ...prev
+          ]);
+          toast.info(`New Announcement: ${newAnn.title}`);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(gradesChannel);
+      supabase.removeChannel(annChannel);
+    };
+  }, []);
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Student Portal</h1>
-        <p className="text-slate-500">Welcome back, Marcus! You have 2 new notifications.</p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Student Portal</h1>
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1">
+            <Zap size={12} className="fill-green-700" /> Live Updates
+          </Badge>
+        </div>
+        <p className="text-slate-500">Welcome back! You have the latest updates here.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -46,7 +122,6 @@ const StudentDashboard = () => {
               <Button className="bg-white text-blue-600 hover:bg-blue-50">Join Online</Button>
               <Button variant="ghost" className="text-white hover:bg-blue-500">View Materials</Button>
             </div>
-            {/* Abstract background shape */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
           </CardContent>
         </Card>
@@ -87,23 +162,33 @@ const StudentDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {grades.map((grade) => (
-                <div key={grade.subject} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <span className="font-medium text-slate-700">{grade.subject}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="font-bold text-slate-900">{grade.score}</span>
-                    <Badge variant="outline" className={cn(
-                      "text-[10px]",
-                      grade.trend === 'up' ? "text-green-600" : grade.trend === 'down' ? "text-red-600" : "text-slate-500"
-                    )}>
-                      {grade.trend.toUpperCase()}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+              <AnimatePresence mode="popLayout">
+                {grades.length > 0 ? grades.map((grade) => (
+                  <motion.div 
+                    key={grade.id || grade.subject}
+                    layout
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                      <span className="font-medium text-slate-700">{grade.subject}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="font-bold text-slate-900">{grade.score}</span>
+                      <Badge variant="outline" className={cn(
+                        "text-[10px]",
+                        grade.trend === 'up' ? "text-green-600" : grade.trend === 'down' ? "text-red-600" : "text-slate-500"
+                      )}>
+                        {grade.trend?.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </motion.div>
+                )) : (
+                  <p className="text-slate-500 text-sm text-center py-4">No grades posted yet.</p>
+                )}
+              </AnimatePresence>
             </div>
           </CardContent>
         </Card>
@@ -114,18 +199,28 @@ const StudentDashboard = () => {
             <Bell size={18} className="text-slate-400" />
           </CardHeader>
           <CardContent className="space-y-4">
-            {announcements.map((ann, idx) => (
-              <div key={idx} className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 p-2 -mx-2 rounded-lg transition-colors">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="secondary" className="text-[10px] h-5">{ann.type}</Badge>
-                    <span className="text-xs text-slate-400">{ann.date}</span>
+            <AnimatePresence mode="popLayout">
+              {announcements.length > 0 ? announcements.map((ann, idx) => (
+                <motion.div 
+                  key={idx} 
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 p-2 -mx-2 rounded-lg transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="secondary" className="text-[10px] h-5">{ann.type}</Badge>
+                      <span className="text-xs text-slate-400">{ann.date}</span>
+                    </div>
+                    <h4 className="font-bold text-slate-900 text-sm">{ann.title}</h4>
                   </div>
-                  <h4 className="font-bold text-slate-900 text-sm">{ann.title}</h4>
-                </div>
-                <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-900 transition-colors" />
-              </div>
-            ))}
+                  <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-900 transition-colors" />
+                </motion.div>
+              )) : (
+                <p className="text-slate-500 text-sm text-center py-4">No announcements yet.</p>
+              )}
+            </AnimatePresence>
           </CardContent>
         </Card>
       </div>
