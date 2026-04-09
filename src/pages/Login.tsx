@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { UserRole } from '@/types';
-import { IMAGES } from '@/lib/constants';
+import { IMAGES, AUTH_MESSAGES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, ShieldCheck, UserCog, Heart } from 'lucide-react';
+import { GraduationCap, ShieldCheck, UserCog, Heart, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 interface LoginProps {
   onLogin: (role: UserRole) => void;
@@ -22,6 +24,46 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   ];
 
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedRole) {
+      toast.error(AUTH_MESSAGES.SELECT_PORTAL);
+      return;
+    }
+
+    if (!email || !password) {
+      toast.error(AUTH_MESSAGES.REQUIRED_FIELDS);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      if (data.user) {
+        onLogin(selectedRole);
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      toast.error(AUTH_MESSAGES.GENERIC_ERROR);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen w-full flex bg-slate-50">
@@ -71,61 +113,86 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <CardTitle className="text-2xl font-bold text-slate-900">Welcome back</CardTitle>
               <CardDescription>Select your portal and enter your credentials</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-3">
-                {roles.map((role) => (
-                  <button
-                    key={role.id}
-                    onClick={() => setSelectedRole(role.id)}
-                    className={cn(
-                      "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-sm font-medium",
-                      selectedRole === role.id 
-                        ? "border-blue-600 bg-blue-50/50" 
-                        : "border-slate-100 hover:border-slate-200 bg-slate-50"
-                    )}
-                  >
-                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", role.bg, role.color)}>
-                      <role.icon size={20} />
-                    </div>
-                    <span className="text-slate-700">{role.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" placeholder="name@school.com" className="h-11" />
+            <CardContent>
+              <form onSubmit={handleSignIn} className="space-y-6">
+                <div className="grid grid-cols-2 gap-3">
+                  {roles.map((role) => (
+                    <button
+                      key={role.id}
+                      type="button"
+                      onClick={() => setSelectedRole(role.id)}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-sm font-medium",
+                        selectedRole === role.id 
+                          ? "border-blue-600 bg-blue-50/50" 
+                          : "border-slate-100 hover:border-slate-200 bg-slate-50"
+                      )}
+                    >
+                      <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", role.bg, role.color)}>
+                        <role.icon size={20} />
+                      </div>
+                      <span className="text-slate-700">{role.label}</span>
+                    </button>
+                  ))}
                 </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label htmlFor="password">Password</Label>
-                    <a href="#" className="text-sm text-blue-600 hover:underline">Forgot?</a>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      placeholder="name@school.com" 
+                      className="h-11" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
                   </div>
-                  <Input id="password" type="password" className="h-11" />
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      <a href="#" className="text-sm text-blue-600 hover:underline">Forgot?</a>
+                    </div>
+                    <Input 
+                      id="password" 
+                      type="password" 
+                      className="h-11" 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <Button 
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700" 
-                onClick={() => selectedRole && onLogin(selectedRole)}
-                disabled={!selectedRole}
-              >
-                Sign In to Portal
-              </Button>
+                <Button 
+                  type="submit"
+                  className="w-full h-11 bg-blue-600 hover:bg-blue-700" 
+                  disabled={!selectedRole || isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Signing In...
+                    </>
+                  ) : (
+                    'Sign In to Portal'
+                  )}
+                </Button>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-slate-200" />
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-slate-200" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-slate-500">Need help?</span>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-slate-500">Need help?</span>
-                </div>
-              </div>
 
-              <p className="text-center text-sm text-slate-500">
-                Contact your IT department for account issues.
-              </p>
+                <p className="text-center text-sm text-slate-500">
+                  Contact your IT department for account issues.
+                </p>
+              </form>
             </CardContent>
           </Card>
         </motion.div>

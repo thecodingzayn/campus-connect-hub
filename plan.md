@@ -1,41 +1,25 @@
-## School Management System Plan
+# Supabase Login Integration Plan
 
-This plan outlines the development of a school management system with distinct portals for administrators, staff, students, and parents.
+This plan outlines the steps to integrate Supabase authentication into the School Management System.
 
-### Phase 1: Core Structure and User Management
+## Phase 1: Supabase Setup
+- [x] Install `@supabase/supabase-js`
+- [ ] Create `src/lib/supabase.ts` to initialize the Supabase client using environment variables.
+- [ ] Update `src/lib/constants.ts` to include common authentication messages.
 
-1.  **User Authentication and Authorization**: Implement a secure system for user login and role-based access control.
-2.  **Portal Routing**: Based on the user's role, redirect them to their respective portal.
-3.  **Admin Portal**:
-    *   User management (add, edit, delete admin, staff, students, parents)
-    *   School settings configuration
-4.  **Staff Portal**:
-    *   Class management
-    *   Student grade management
-    *   Timetable management
-    *   Attendance tracking
-5.  **Student Portal**:
-    *   View grades
-    *   View timetable
-    *   View attendance
-    *   Access school announcements
-6.  **Parent Portal**:
-    *   View child's grades
-    *   View child's attendance
-    *   View child's timetable
-    *   Receive school announcements
+## Phase 2: Login Page Integration
+- [ ] Update `src/pages/Login.tsx` to handle form inputs (email, password).
+- [ ] Implement `handleLogin` using `supabase.auth.signInWithPassword`.
+- [ ] Add loading states and error handling with `sonner` toasts.
+- [ ] Ensure the selected role is passed or used to verify user permissions.
 
-### Phase 2: Feature Expansion (Details to be defined in subsequent iterations)
+## Phase 3: Authentication State Management
+- [ ] Update `src/App.tsx` to include an auth listener (`onAuthStateChange`).
+- [ ] Fetch user profile details (name, role, avatar) from the `profiles` table or `user_metadata`.
+- [ ] Implement protected routing logic based on authentication state.
+- [ ] Handle automatic logout on session expiration.
 
-*   **Communication System**: Messaging between users.
-*   **Event Management**: School events calendar.
-*   **Resource Management**: Library, labs.
-*   **Fee Management**: Payment and tracking.
-
-### Tools and Technologies:
-
-*   Frontend: React/Vue/Angular (to be decided by frontend engineer)
-*   Backend: Node.js/Python/Go (to be decided by backend engineer)
-*   Database: PostgreSQL/MySQL (to be decided by backend engineer)
-
-The frontend engineer will be responsible for generating initial UI mockups and the basic navigation structure for each portal. They must use the `generate_images_bulk` tool first.
+## Phase 4: Validation
+- [ ] Verify successful login redirects to the correct portal.
+- [ ] Verify logout clears the session and redirects to the login page.
+- [ ] Verify unauthenticated users cannot access dashboard routes.
