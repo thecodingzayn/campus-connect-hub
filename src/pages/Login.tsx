@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserRole } from '@/types';
-import { IMAGES, AUTH_MESSAGES, DEMO_CREDENTIALS } from '@/lib/constants';
+import { IMAGES, AUTH_MESSAGES, DEMO_CREDENTIALS, USER_ROLES } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GraduationCap, ShieldCheck, UserCog, Heart, Loader2, Info, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
+import { signInWithEmail } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 interface LoginProps {
@@ -17,10 +17,10 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const roles = [
-    { id: 'admin' as UserRole, label: 'Administrator', icon: ShieldCheck, color: 'text-purple-600', bg: 'bg-purple-100' },
-    { id: 'staff' as UserRole, label: 'Staff / Teachers', icon: UserCog, color: 'text-blue-600', bg: 'bg-blue-100' },
-    { id: 'student' as UserRole, label: 'Student', icon: GraduationCap, color: 'text-green-600', bg: 'bg-green-100' },
-    { id: 'parent' as UserRole, label: 'Parent', icon: Heart, color: 'text-pink-600', bg: 'bg-pink-100' },
+    { id: USER_ROLES.ADMIN, label: 'Administrator', icon: ShieldCheck, color: 'text-purple-600', bg: 'bg-purple-100' },
+    { id: USER_ROLES.STAFF, label: 'Staff / Teachers', icon: UserCog, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { id: USER_ROLES.STUDENT, label: 'Student', icon: GraduationCap, color: 'text-green-600', bg: 'bg-green-100' },
+    { id: USER_ROLES.PARENT, label: 'Parent', icon: Heart, color: 'text-pink-600', bg: 'bg-pink-100' },
   ];
 
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
@@ -45,14 +45,25 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Step 1: Check if it's a demo account for quick bypass
+      const isDemo = DEMO_CREDENTIALS.find(
+        (demo) => 
+          demo.email.toLowerCase() === email.toLowerCase() && 
+          demo.password === password && 
+          demo.role === selectedRole
+      );
+
+      if (isDemo) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        toast.success(AUTH_MESSAGES.LOGIN_SUCCESS);
+        onLogin(selectedRole);
+        return;
+      }
+
+      // Step 2: Fallback to real Supabase Auth
+      const { data, error } = await signInWithEmail(email, password);
 
       if (error) {
-        // For demo purposes, if login fails and it's a demo account,
-        // we'll show a helpful message and allow bypass if requested (though we keep the flow real)
         toast.error(error.message || AUTH_MESSAGES.INVALID_CREDENTIALS);
         return;
       }
@@ -61,9 +72,22 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         toast.success(AUTH_MESSAGES.LOGIN_SUCCESS);
         onLogin(selectedRole);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login error:', err);
-      toast.error(AUTH_MESSAGES.GENERIC_ERROR);
+      // Safety net for demo even on network error
+      const isDemo = DEMO_CREDENTIALS.find(
+        (demo) => 
+          demo.email.toLowerCase() === email.toLowerCase() && 
+          demo.password === password && 
+          demo.role === selectedRole
+      );
+
+      if (isDemo) {
+        toast.success(AUTH_MESSAGES.LOGIN_SUCCESS);
+        onLogin(selectedRole);
+      } else {
+        toast.error(AUTH_MESSAGES.GENERIC_ERROR);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -169,7 +193,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       type="button"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelectedRole(role.id)}
+                      onClick={() => setSelectedRole(role.id as UserRole)}
                       className={cn(
                         "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-200 text-sm font-semibold",
                         selectedRole === role.id 
@@ -208,7 +232,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     <Input 
                       id="password" 
                       type="password" 
-                      placeholder="••••••••"
+                      placeholder="\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022\\u2022"
                       className="h-12 border-slate-200 focus:ring-blue-500"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}

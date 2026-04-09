@@ -1,3 +1,5 @@
+import { UserRole } from '@/types';
+
 export const IMAGES = {
   LOGO: 'https://storage.googleapis.com/dala-prod-public-storage/generated-images/adb6e234-216e-4c1a-a6b9-0e8fe9d9a70a/school-logo-02490a84-1775723424255.webp',
   HERO: 'https://storage.googleapis.com/dala-prod-public-storage/generated-images/adb6e234-216e-4c1a-a6b9-0e8fe9d9a70a/school-hero-image-66c20eaf-1775723424325.webp',
@@ -22,3 +24,10 @@ export const DEMO_CREDENTIALS = [
   { role: 'student', email: 'student@school.com', password: 'password123' },
   { role: 'parent', email: 'parent@school.com', password: 'password123' },
 ];
+
+export const USER_ROLES: Record<string, UserRole> = {
+  ADMIN: 'admin',
+  STAFF: 'staff',
+  STUDENT: 'student',
+  PARENT: 'parent',
+};

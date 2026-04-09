@@ -1,21 +1,19 @@
-# Add Demo Credentials UI to Login Page
+1. **Update `src/lib/constants.ts`**:
+   - Add `USER_ROLES` constant to provide a single source of truth for user roles.
 
-The user is asking for login credentials. We will update the Login page to display common demo credentials and provide an easy way to use them for testing purposes.
+2. **Update `src/App.tsx`**:
+   - Integrate `react-router-dom` for routing.
+   - Define specific routes: `/admin`, `/staff`, `/student`, `/parent`, and `/login`.
+   - Implement `ProtectedRoute` logic to ensure only users with the correct role can access their respective dashboard.
+   - Add logic to automatically redirect users to their role-specific route upon login or if they access the root path while authenticated.
+   - Ensure `DashboardLayout` correctly wraps the dashboard content for each role.
 
-## Tasks
-1. **Update Login UI**:
-   - Add a "Demo Credentials" section at the bottom of the login card.
-   - List the common roles and their corresponding test accounts.
-   - Add a "Quick Fill" button for each demo account to make testing easier.
+3. **Update `src/pages/Login.tsx`**:
+   - Ensure the `onLogin` callback is correctly triggered. (The current implementation in `App.tsx` will handle the navigation after state updates).
+   - Ensure the `DEMO_CREDENTIALS` are used correctly to simulate a login and trigger the redirection.
 
-2. **Enhance Login Experience**:
-   - Add animations for the demo credentials section.
-   - Ensure the layout remains clean and responsive.
-
-3. **Provide Default Credentials**:
-   - Admin: `admin@school.com` / `password123`
-   - Staff: `staff@school.com` / `password123`
-   - Student: `student@school.com` / `password123`
-   - Parent: `parent@school.com` / `password123`
-
-*Note: These credentials assume the user has set them up in their Supabase project or that they are standard for this template.*
+4. **Verification**:
+   - Test login as Admin, Staff, Student, and Parent.
+   - Verify that successful login redirects to the correct URL (e.g., `/admin`).
+   - Verify that manual navigation to a different role's dashboard (e.g., a student trying to go to `/admin`) redirects back to their own dashboard or login.
+   - Verify that logout takes the user back to `/login`.
